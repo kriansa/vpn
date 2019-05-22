@@ -1,0 +1,62 @@
+---
+- hosts: all
+
+  handlers:
+    - name: restart openvpn
+      become: true
+      systemd: name=openvpn@server state=restarted enabled=true
+
+  roles:
+    - role: kriansa/os-base
+      hostname: kriansa-vpn
+
+  tasks:
+    - name: install openvpn
+      become: true
+      yum: name=openvpn state=latest enablerepo=epel
+
+    - name: configure openvpn
+      notify: restart openvpn
+      become: true
+      copy: src=files/app/conf/server.conf dest=/etc/openvpn/server.conf mode=0644
+
+    - name: create certs directory
+      become: true
+      file: path=/etc/openvpn/certs mode=0700 state=directory
+
+    - name: create dhparam
+      notify: restart openvpn
+      become: true
+      command: openssl dhparam -out /etc/openvpn/certs/dh2048.pem 2048
+      args:
+        creates: /etc/openvpn/certs/dh2048.pem
+
+    - name: install boto to enable AWS API access with Ansible
+      become: true
+      yum:
+        name: [ "python2-botocore", "python2-boto3" ]
+        state: latest
+
+    - name: get certificates from S3
+      notify: restart openvpn
+      become: true
+      aws_s3:
+        bucket: "{{ lookup('env', 'PKI_S3_BUCKET') }}"
+        object: "{{ item.s3_path }}"
+        dest: "/etc/openvpn/certs/{{ item.dest }}"
+        mode: get
+      with_items:
+        - { s3_path: ca/root-ca-cert.pem, dest: root-ca-cert.pem }
+        - { s3_path: "certs/{{ lookup('env', 'VPN_SUBDOMAIN') }}.{{ lookup('env', 'BASE_DOMAIN_NAME') }}-cert.pem", dest: host-cert.pem }
+        - { s3_path: "keys/{{ lookup('env', 'VPN_SUBDOMAIN') }}.{{ lookup('env', 'BASE_DOMAIN_NAME') }}-key.pem", dest: host-key.pem }
+        - { s3_path: keys/openvpn_tls_auth.key, dest: openvpn_tls_auth.key }
+
+    - name: set right permissions to certificates
+      notify: restart openvpn
+      become: true
+      file: path={{ item }} mode=0600
+      with_items:
+        - /etc/openvpn/certs/root-ca-cert.pem
+        - /etc/openvpn/certs/host-cert.pem
+        - /etc/openvpn/certs/host-key.pem
+        - /etc/openvpn/certs/openvpn_tls_auth.key

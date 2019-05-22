@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+#
+# Generate a OpenVPN configuration file (.ovpn)
+# Usage: create-client-config <CA-CERT_PATH> <TLS-CRYPT-CERT_PATH> <CLIENT-CERT_PATH> <CLIENT-KEY_PATH> <CONFIG_NAME>
+
+function main {
+  local ca_cert=$1
+  local tls_crypt_cert=$2
+  local client_cert=$3
+  local client_key=$4
+  local config_name=$5
+
+  if ! [ -f "$ca_cert" ] || ! [ -f "$tls_crypt_cert" ] || ! [ -f "$client_cert" ] \
+    || ! [ -f "$client_key" ] || [ -z "$config_name" ]; then
+    help
+    exit 1
+  fi
+
+  # cd to root path
+  cd "$(dirname "$0")/.." || exit;
+
+  # Load the .env
+  # shellcheck source=../lib/dotenv.sh
+  source lib/dotenv.sh
+
+  local output_path; output_path="output/$(name_to_filename "$config_name").ovpn"
+
+  if [ -f "$output_path" ]; then
+    echo "Overriding existing config."
+  fi
+
+  # Copy the base client config
+  envsubst < app/conf/client.conf > "$output_path"
+  append_tag_to_file "$output_path" "$ca_cert" "ca"
+  append_tag_to_file "$output_path" "$client_cert" "cert"
+  append_tag_to_file "$output_path" "$client_key" "key"
+  append_tag_to_file "$output_path" "$tls_crypt_cert" "tls-crypt"
+
+  echo "Config file written to $output_path"
+}
+
+function help {
+  echo "Generate a OpenVPN configuration file (.ovpn) onto the output folder."
+  echo ""
+  echo "Usage: create-client-config <CA-CERT_PATH> <TLS-CRYPT-CERT_PATH> <CLIENT-CERT_PATH> <CLIENT-KEY_PATH> <CONFIG_NAME>"
+}
+
+function name_to_filename {
+  printf "%s" "$1" | sed -e 's/-/ /g' -Ee 's/ +/_/g' | awk '{printf tolower($0)}'
+}
+
+function append_tag_to_file {
+  local output_file=$1
+  local append_file=$2
+  local tag=$3
+
+  { echo "<$tag>"; cat "$append_file"; echo "</$tag>"; } >> "$output_file"
+}
+
+main "$@"
