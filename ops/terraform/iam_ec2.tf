@@ -1,5 +1,5 @@
 resource "aws_iam_role" "ec2_vpn" {
-  name = "EC2VPNServer"
+  name        = "EC2VPNServer"
   description = "Role to enable EC2 VPN Server to use AWS resources"
 
   assume_role_policy = <<EOF
@@ -46,8 +46,8 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "pki_policy_to_role" {
-  role = "${aws_iam_role.ec2_vpn.name}"
-  policy_arn = "${aws_iam_policy.enable_read_access_to_pki_bucket.arn}"
+  role       = aws_iam_role.ec2_vpn.name
+  policy_arn = aws_iam_policy.enable_read_access_to_pki_bucket.arn
 }
 
 data "aws_iam_policy" "cw_agent" {
@@ -55,13 +55,13 @@ data "aws_iam_policy" "cw_agent" {
 }
 
 resource "aws_iam_role_policy_attachment" "cw_agent_to_role" {
-  role = "${aws_iam_role.ec2_vpn.name}"
-  policy_arn = "${data.aws_iam_policy.cw_agent.arn}"
+  role       = aws_iam_role.ec2_vpn.name
+  policy_arn = data.aws_iam_policy.cw_agent.arn
 }
 
 # Instance Profile is a abstraction to link a Role with an EC2 instance
 # Other services such as ECS allows you to pass a Role directly on launch
 resource "aws_iam_instance_profile" "ec2_vpn" {
   name = "EC2VPNServer"
-  role = "${aws_iam_role.ec2_vpn.name}"
+  role = aws_iam_role.ec2_vpn.name
 }
