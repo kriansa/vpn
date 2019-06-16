@@ -13,7 +13,7 @@ source lib/dotenv.sh
 envsubst < ops/terraform/backend.tf-template > ops/terraform/backend.tf
 
 # Then initializes the backend
-ops/bin/terraform init
+ops/bin/terraform init > /dev/null || exit 1
 
 # Only enable auto-approve when in non-interactive shells
 test -t 0 || flags=(-auto-approve)
