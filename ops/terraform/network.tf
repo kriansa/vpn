@@ -85,3 +85,8 @@ resource "aws_security_group" "allow_vpn_traffic_from_internet" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+resource "aws_eip" "main" {
+  vpc        = true
+  depends_on = [aws_internet_gateway.main]
+}

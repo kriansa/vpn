@@ -67,6 +67,11 @@ resource "aws_instance" "main" {
   }
 }
 
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.main.id
+  allocation_id = aws_eip.main.id
+}
+
 resource "aws_cloudwatch_metric_alarm" "cpu_alarm" {
   alarm_name          = "EC2 ${aws_instance.main.tags["Name"]} - CPU usage above 80%"
   comparison_operator = "GreaterThanOrEqualToThreshold"

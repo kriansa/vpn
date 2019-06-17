@@ -7,5 +7,5 @@ resource "aws_route53_record" "a_entry" {
   name    = "${var.vpn_subdomain}.${data.aws_route53_zone.main.name}"
   type    = "A"
   ttl     = "300"
-  records = [aws_instance.main.public_ip]
+  records = [aws_eip.main.public_ip]
 }
