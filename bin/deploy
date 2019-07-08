@@ -3,20 +3,10 @@
 # Deploy this service
 
 # cd to root path
-cd "$(dirname "$0")/.." || exit;
-
-# Load the .env
-# shellcheck source=../lib/dotenv.sh
-source lib/dotenv.sh
-
-# Replace the variables on the template file
-envsubst < ops/terraform/backend.tf-template > ops/terraform/backend.tf
-
-# Then initializes the backend
-ops/bin/terraform init > /dev/null || exit 1
-
-# Only enable auto-approve when in non-interactive shells
-test -t 0 || flags=(-auto-approve)
+cd "$(dirname "$0")/.." || exit
 
 # Deploy!
-ops/bin/terraform apply "${flags[@]}"
+cd ops/terraform && terraform-auto \
+  --environment-file="../../.env" \
+  --backend-template-file="backend.tf-template" \
+  apply
