@@ -7,10 +7,13 @@
 # information.
 
 terraform {
-  backend "s3" {
-    region = "$AWS_DEFAULT_REGION"
-    dynamodb_table = "$TERRAFORM_BACKEND_DYNAMO_TABLE"
-    bucket = "$TERRAFORM_BACKEND_S3_BUCKET"
-    key = "tf-state"
+  backend "remote" {
+    hostname = "app.terraform.io"
+    organization = "$TERRAFORM_ORGNAME"
+    token = "$TERRAFORM_TOKEN"
+
+    workspaces {
+      name = "$TERRAFORM_WORKSPACE"
+    }
   }
 }

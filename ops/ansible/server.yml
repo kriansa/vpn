@@ -6,14 +6,6 @@
       become: true
       systemd: name=openvpn@server state=restarted enabled=true
 
-    - name: persist iptables rules
-      become: yes
-      command: /usr/libexec/iptables/iptables.init save
-
-    - name: clear iptables rules
-      become: yes
-      command: iptables -F
-
   roles:
     - role: kriansa/os-base
       hostname: kriansa-vpn
@@ -69,42 +61,36 @@
         - /etc/openvpn/certs/host-key.pem
         - /etc/openvpn/certs/openvpn_tls_auth.key
 
-    # ---
-    # The entire block below is meant to have our server to act as a tunnel using NAT.
-    # I think this could be accomplished more easily by using firewalld instead of "raw" iptables
-    # ---
-
-    - name: enable ipv4 ip forward
+    - name: install firewalld
       become: true
-      sysctl:
-        name: net.ipv4.ip_forward
-        value: "1"
-        sysctl_set: yes
-        state: present
-        reload: yes
+      yum: name=firewalld state=latest
 
-    # Default install of iptables-services messes with default rules, so after the installation,
-    # let's ensure that all rules are cleared.
-    - name: install iptables-services to enable rules persistency
+    - name: start firewalld
       become: true
-      notify: clear iptables rules
-      yum: name=iptables-services state=latest
+      systemd: name=firewalld state=started enabled=true
 
-    - name: enable iptables service
+    - name: allow openvpn
       become: true
-      systemd: name=iptables state=started enabled=true
+      firewalld:
+        service: openvpn
+        permanent: true
+        immediate: true
+        state: enabled
 
-    # Equivalent command: iptables -t nat -A POSTROUTING -s 10.0.2.0/24 -o eth0 -j MASQUERADE
-    - name: set iptables rules to allow NAT redirect
+    - name: enable ipv4 masquerading
       become: true
-      notify: persist iptables rules
-      iptables:
-        table: nat
-        chain: POSTROUTING
-        source: 10.0.2.0/24
-        out_interface: eth0
-        jump: MASQUERADE
-        comment: Allow tunnelling traffic from 10.0.2.0/24 through eth0
+      firewalld:
+        masquerade: true
+        permanent: true
+        immediate: true
+        state: enabled
 
-        iptables -I FORWARD -i tun0 -o eth0 -s 10.0.2.0/24 -m conntrack --ctstate NEW -j ACCEPT
-        iptables -I FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+    # Not sure why this rule is not working. Maybe the super-outdated version of firewalld on amazon
+    # repo, but either way, gotta test it out someday to enforce masquerade only from the VPN CIDR.
+    # - name: enable ipv4 routing
+    #   become: true
+    #   firewalld:
+    #     rich_rule: rule family=ipv4 source address=10.0.2.0/24 masquerade
+    #     permanent: true
+    #     immediate: true
+    #     state: enabled

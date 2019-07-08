@@ -35,7 +35,7 @@ resource "aws_instance" "main" {
   key_name = aws_key_pair.main.key_name
 
   # This instance size is enough for a VPN
-  instance_type = "t3.nano"
+  instance_type = "t3a.nano"
 
   # The role used for this EC2
   iam_instance_profile = aws_iam_instance_profile.ec2_vpn.name
@@ -49,9 +49,9 @@ resource "aws_instance" "main" {
     aws_security_group.allow_ssh_from_admin.id,
   ]
 
-  # Disable the default T3 'unlimited' for t3 instances
+  # Enable T3 unlimited CPU credits scheduling
   credit_specification {
-    cpu_credits = "standard"
+    cpu_credits = "unlimited"
   }
 
   lifecycle {
@@ -63,7 +63,7 @@ resource "aws_instance" "main" {
   }
 
   provisioner "local-exec" {
-    command = "../bin/provision ec2-user@${self.public_ip}"
+    command = "simple-ansible-provision ec2-user@${self.public_ip} ../ansible/server.yml"
   }
 }
 
@@ -121,6 +121,23 @@ resource "aws_cloudwatch_metric_alarm" "disk_alarm" {
     device     = "nvme0n1p1"
     fstype     = "xfs"
     path       = "/"
+  }
+
+  alarm_actions = [aws_sns_topic.alarms.arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_credits" {
+  alarm_name          = "EC2 ${aws_instance.main.tags["Name"]} - CPU credits too low"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = "60"
+  metric_name         = "CPUCreditBalance"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Maximum"
+  threshold           = "0"
+
+  dimensions = {
+    InstanceId = aws_instance.main.id
   }
 
   alarm_actions = [aws_sns_topic.alarms.arn]
