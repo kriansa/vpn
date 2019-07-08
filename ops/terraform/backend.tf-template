@@ -1,4 +1,4 @@
-# Define AWS S3 as the backend
+# Define Terraform Remote the backend
 # 
 # This file tf-template exists so that it can dynamically generate the backend.tf using environment
 # variables. This is not natively possible by just using plain Terraform because it's unsupported.
