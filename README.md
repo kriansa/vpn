@@ -13,6 +13,7 @@ configured to auto-update.
 
 * Ansible
 * Terraform
+* AWS CLI
 * gettext (for `envsubst`)
 
 ### AWS dependencies
