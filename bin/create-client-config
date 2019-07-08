@@ -20,8 +20,7 @@ function main {
   cd "$(dirname "$0")/.." || exit;
 
   # Load the .env
-  # shellcheck source=../lib/dotenv.sh
-  source lib/dotenv.sh
+  dotenv
 
   local output_path; output_path="output/$(name_to_filename "$config_name").ovpn"
 
@@ -43,6 +42,11 @@ function help {
   echo "Generate a OpenVPN configuration file (.ovpn) onto the output folder."
   echo ""
   echo "Usage: create-client-config <CA-CERT_PATH> <TLS-CRYPT-CERT_PATH> <CLIENT-CERT_PATH> <CLIENT-KEY_PATH> <CONFIG_NAME>"
+}
+
+# shellcheck source=../.env
+function dotenv {
+  set -a; source ".env"; set  +a
 }
 
 function name_to_filename {
